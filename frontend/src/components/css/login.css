@@ -1,4 +1,7 @@
 /* Add these animation keyframes to your CSS/Tailwind setup */
+
+@import "tailwindcss";
+
 @keyframes float {
     0% {
       transform: translateY(0px);

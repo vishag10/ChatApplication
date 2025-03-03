@@ -1,4 +1,4 @@
-import userSchema from "../models/buyerOrSeller.model.js"
+import userSchema from "../models/user.model.js"
 import bcrypt from "bcrypt"
 import jrk from "jsonwebtoken"
 import nodemailer from "nodemailer";
@@ -12,10 +12,10 @@ const transporter = nodemailer.createTransport({
     },
 });
 const { sign } = jrk
-export async function addbuyer(req, res) {
-    const { username, email, accounttype, phone, password, cpassword } = req.body
+export async function addUser(req, res) {
+    const { username, email,password, cpassword,photo } = req.body
     console.log(username, email, password, cpassword);
-    if (!(username && email && password && accounttype && phone))
+    if (!(username && email && password && photo))
         return res.status(404).send({ msg: "fields are empty" })
     if (password != cpassword)
         return res.status(404).send({ msg: "password not match" })
@@ -28,7 +28,7 @@ export async function addbuyer(req, res) {
     const hPassword = await bcrypt.hash(password, 10)
     console.log(hPassword);
 
-    await userSchema.create({ username, email, password: hPassword, accounttype, phone }).then(() => {
+    await userSchema.create({  username, email,password, cpassword,photo }).then(() => {
         res.status(201).send({ msg: "successfully created" })
     }).catch((err) => {
         res.status(500).send({ msg: err })
