@@ -7,8 +7,9 @@ import Auth from "./middleware/auth.js";
 
 const router = Router();
 
-// for buyer or seller
+// user
 router.route("/adduser").post(bh.addUser);
+router.route("/loginuser").post(bh.loginUser);
 
 
 

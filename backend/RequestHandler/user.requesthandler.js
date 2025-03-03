@@ -28,7 +28,7 @@ export async function addUser(req, res) {
     const hPassword = await bcrypt.hash(password, 10)
     console.log(hPassword);
 
-    await userSchema.create({  username, email,password, cpassword,photo }).then(() => {
+    await userSchema.create({  username, email,password:hPassword,photo }).then(() => {
         res.status(201).send({ msg: "successfully created" })
     }).catch((err) => {
         res.status(500).send({ msg: err })
@@ -38,7 +38,7 @@ export async function addUser(req, res) {
 
 }
 
-export async function loginbuyer(req, res) {
+export async function loginUser(req, res) {
     const { email, password } = req.body
     if (!(email && password))
         return res.status(404).send({ msg: "fields are empty" })
