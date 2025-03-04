@@ -10,6 +10,7 @@ const router = Router();
 // user
 router.route("/adduser").post(bh.addUser);
 router.route("/loginuser").post(bh.loginUser);
+router.route("/getuser").get(Auth, bh.HomeUser);
 
 
 
