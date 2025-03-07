@@ -1,5 +1,6 @@
 import userSchema from "../models/user.model.js"
 import messageSchema from "../models/message.model.js"
+import { io } from "../socket.js"
 
 export async function getUserSidebar(req, res) {
     try {
@@ -8,10 +9,8 @@ export async function getUserSidebar(req, res) {
         res.status(200).send(filterdusers);
     } catch (error) {
         console.log(error);
-
     }
 }
-
 
 export async function getMessage(req, res) {
     try {
@@ -27,7 +26,6 @@ export async function getMessage(req, res) {
 
     } catch (error) {
         console.log(error);
-
     }
 }
 
@@ -35,15 +33,22 @@ export async function sendMessage(req, res) {
     try {
         const { message, time } = req.body;
         const { userfrom, userto } = req.body;
-        await messageSchema.create({ message, time, userfrom, userto }).then(() => {
-            res.status(201).send({ msg: "sended message" })
-        }).catch((err) => {
-            res.status(500).send({ msg: err })
-        })
-
-
+        
+        const newMessage = await messageSchema.create({ 
+            message, 
+            time, 
+            userfrom, 
+            userto 
+        });
+        
+        
+        io.emit('new message', {
+            message: newMessage
+        });
+        
+        res.status(201).send({ msg: "sended message" });
     } catch (error) {
         console.log(error);
-
+        res.status(500).send({ msg: error.message });
     }
 }

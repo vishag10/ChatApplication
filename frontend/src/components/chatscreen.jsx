@@ -133,7 +133,7 @@ function MessengerUi() {
                 className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-teal-50"
                 onClick={() => {
                   setShowDropdown(false);
-                  navigate("/profile");
+                  navigate(`/profile/${user._id}`);
                 }}
               >
                 <div className="flex items-center">
@@ -200,7 +200,7 @@ function MessengerUi() {
                   <div className="font-medium text-gray-800">{friend.username}</div>
                   <div className="text-sm text-gray-500 truncate">{friend.email}</div>
                 </div>
-                <div className="text-xs text-teal-600 min-w-[30px] text-right font-medium">Online</div>
+                
               </div>
             ))}
           </div>

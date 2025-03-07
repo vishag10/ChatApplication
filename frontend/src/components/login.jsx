@@ -106,6 +106,12 @@ function Loginpage() {
               </div>
             </div>
 
+
+            <div className="flex items-center justify-between">
+                <Link to={"userforgot"} className="text-sm text-purple-800 hover:text-purple-700">
+                  Forgot Password?
+                </Link>
+              </div>
          
             <div className="mb-6">
               <button
@@ -116,6 +122,7 @@ function Loginpage() {
               </button>
             </div>
           </form>
+          
 
        
           <div className="text-center text-gray-600 text-base sm:text-lg">

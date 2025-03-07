@@ -12,6 +12,9 @@ const router = Router();
 // user
 router.route("/adduser").post(bh.addUser);
 router.route("/loginuser").post(bh.loginUser);
+router.route("/updateuser/:id").put(bh.updateUser);
+router.route("/forgot").post(bh.passwordRequest);
+router.route("/userpasswordchange").put(bh.resetPassword);
 router.route("/getuser").get(Auth, bh.HomeUser);
 router.route("/getsidebar").post(mh.getUserSidebar);
 router.route("/sendmessage").post(mh.sendMessage);

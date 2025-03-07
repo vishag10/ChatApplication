@@ -1,20 +1,110 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from "react-router-dom";
 import apiPath from "./apipath/apipath";
 import axios from "axios";
+import io from 'socket.io-client';
 
 function MessageScreen({ selectedFriend, currentUserId }) {
-  
     const [messageInput, setMessageInput] = useState("");
-   
     const [receivedMessages, setReceivedMessages] = useState([]);
+    const [socket, setSocket] = useState(null);
+    const [isTyping, setIsTyping] = useState(false);
+    const [typingTimeout, setTypingTimeout] = useState(null);
+    const chatBoxRef = useRef(null);
     
-    console.log("Current User ID:", currentUserId);
+    // Initialize socket connection
+    useEffect(() => {
+        const newSocket = io(apiPath().replace('/api', ''));
+        setSocket(newSocket);
+        
+        // Let the server know this user is online
+        newSocket.emit('user_connected', currentUserId);
+        
+        // Clean up on unmount
+        return () => {
+            newSocket.disconnect();
+        };
+    }, [currentUserId]);
+    
+    // Handle socket events for receiving messages and typing indicators
+    useEffect(() => {
+        if (!socket) return;
+        
+        // Listen for new messages
+        socket.on('new message', (data) => {
+            const newMessage = data.message;
+            
+            // Only add to chat if the message is relevant to this conversation
+            if ((newMessage.userfrom === currentUserId && newMessage.userto === selectedFriend._id) ||
+                (newMessage.userfrom === selectedFriend._id && newMessage.userto === currentUserId)) {
+                setReceivedMessages(prevMessages => [...prevMessages, newMessage]);
+                // If we receive a message, the other user is no longer typing
+                setIsTyping(false);
+            }
+        });
+        
+        // Listen for typing indicators
+        socket.on('typing', (data) => {
+            if (data.userId === selectedFriend._id && data.receiverId === currentUserId) {
+                setIsTyping(data.isTyping);
+            }
+        });
+        
+        return () => {
+            socket.off('new message');
+            socket.off('typing');
+        };
+    }, [socket, currentUserId, selectedFriend._id]);
+    
+    // Scroll to bottom when messages change
+    useEffect(() => {
+        if (chatBoxRef.current) {
+            chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
+        }
+    }, [receivedMessages, isTyping]);
+    
+    // Handle typing event
+    const handleTyping = (e) => {
+        setMessageInput(e.target.value);
+        
+        // Send typing indicator to server
+        if (socket) {
+            socket.emit('typing', {
+                userId: currentUserId,
+                receiverId: selectedFriend._id,
+                isTyping: true
+            });
+            
+            // Clear previous timeout
+            if (typingTimeout) clearTimeout(typingTimeout);
+            
+            // Set a new timeout to stop the typing indicator after 2 seconds of inactivity
+            const timeout = setTimeout(() => {
+                socket.emit('typing', {
+                    userId: currentUserId,
+                    receiverId: selectedFriend._id,
+                    isTyping: false
+                });
+            }, 2000);
+            
+            setTypingTimeout(timeout);
+        }
+    };
     
     // Function to send a message
     const handleMessageSend = async () => {
         try {
             if (!messageInput.trim()) return; // Don't send empty messages
+            
+            // Clear typing indicator when sending a message
+            if (socket && typingTimeout) {
+                clearTimeout(typingTimeout);
+                socket.emit('typing', {
+                    userId: currentUserId,
+                    receiverId: selectedFriend._id,
+                    isTyping: false
+                });
+            }
             
             const messageData = {
                 userfrom: currentUserId,
@@ -28,8 +118,6 @@ function MessageScreen({ selectedFriend, currentUserId }) {
             if (res.status === 201) {
                 // Clear the input field after successful send
                 setMessageInput("");
-                // Refresh messages
-                getMessages();
             }
         } catch (error) {
             console.log("Error sending message:", error);
@@ -57,12 +145,11 @@ function MessageScreen({ selectedFriend, currentUserId }) {
     
     // Fetch messages when component mounts or selectedFriend changes
     useEffect(() => {
-        getMessages();
-        
+        if (selectedFriend && selectedFriend._id) {
+            getMessages();
+        }
     }, [currentUserId, selectedFriend._id]);
     
-    console.log("Received Messages:", receivedMessages);
-
     return (
         <div className="flex-1 flex flex-col bg-gray-50">
             <div className="chat-header flex items-center p-4 border-b border-gray-200 bg-white">
@@ -73,45 +160,69 @@ function MessageScreen({ selectedFriend, currentUserId }) {
                 />
                 <div>
                     <div className="font-semibold text-gray-800">{selectedFriend.username}</div>
-                    <div className="text-xs text-gray-500">Online</div>
+                    <div className="text-xs text-gray-500">
+                        {isTyping ? (
+                            <span className="text-teal-500 animate-pulse">typing...</span>
+                        ) : (
+                            ""
+                        )}
+                    </div>
                 </div>
             </div>
 
-            <div className="chatbox flex-1 p-4 overflow-y-auto flex flex-col">
-              
-                   { receivedMessages.map((msg, index) => (
-                        <div 
-                            key={index}
-                            className={`message ${msg.userfrom === currentUserId ? 'self-end' : 'self-start'} flex max-w-[70%] mb-4`}
-                        >
-                            {msg.userfrom !== currentUserId && (
-                                <div className="mr-2">
-                                    <img 
-                                        src={selectedFriend.photo && selectedFriend.photo[0] ? selectedFriend.photo[0] : "/api/placeholder/30/30"} 
-                                        alt="Friend" 
-                                        className="w-8 h-8 rounded-full border border-teal-200" 
-                                    />
-                                </div>
-                            )}
-                            <div>
-                                <div 
-                                    className={`message-bubble px-4 py-2 rounded-2xl text-sm shadow-sm ${
-                                        msg.userfrom === currentUserId 
-                                            ? 'bg-teal-500 text-white' 
-                                            : 'bg-white text-gray-800'
-                                    }`}
-                                >
-                                    {msg.message}
-                                </div>
-                                <div className={`message-time text-xs text-gray-400 mt-1 ${
-                                    msg.userfrom === currentUserId ? 'text-right' : ''
-                                }`}>
-                                    {msg.time}
-                                </div>
+            <div ref={chatBoxRef} className="chatbox flex-1 p-4 overflow-y-auto flex flex-col">
+                {receivedMessages.map((msg, index) => (
+                    <div 
+                        key={index}
+                        className={`message ${msg.userfrom === currentUserId ? 'self-end' : 'self-start'} flex max-w-[70%] mb-4`}
+                    >
+                        {msg.userfrom !== currentUserId && (
+                            <div className="mr-2">
+                                <img 
+                                    src={selectedFriend.photo && selectedFriend.photo[0] ? selectedFriend.photo[0] : "/api/placeholder/30/30"} 
+                                    alt="Friend" 
+                                    className="w-8 h-8 rounded-full border border-teal-200" 
+                                />
+                            </div>
+                        )}
+                        <div>
+                            <div 
+                                className={`message-bubble px-4 py-2 rounded-2xl text-sm shadow-sm ${
+                                    msg.userfrom === currentUserId 
+                                        ? 'bg-teal-500 text-white' 
+                                        : 'bg-white text-gray-800'
+                                }`}
+                            >
+                                {msg.message}
+                            </div>
+                            <div className={`message-time text-xs text-gray-400 mt-1 ${
+                                msg.userfrom === currentUserId ? 'text-right' : ''
+                            }`}>
+                                {msg.time}
                             </div>
                         </div>
-                    ))
-                }
+                    </div>
+                ))}
+                
+                {/* Typing indicator in the chat */}
+                {isTyping && (
+                    <div className="message self-start flex max-w-[70%] mb-4">
+                        <div className="mr-2">
+                            <img 
+                                src={selectedFriend.photo && selectedFriend.photo[0] ? selectedFriend.photo[0] : "/api/placeholder/30/30"} 
+                                alt="Friend" 
+                                className="w-8 h-8 rounded-full border border-teal-200" 
+                            />
+                        </div>
+                        <div className="bg-gray-100 px-4 py-2 rounded-2xl text-sm shadow-sm">
+                            <div className="typing-indicator flex space-x-1">
+                                <span className="h-2 w-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0s'}}></span>
+                                <span className="h-2 w-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></span>
+                                <span className="h-2 w-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></span>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Message Input */}
@@ -137,7 +248,7 @@ function MessageScreen({ selectedFriend, currentUserId }) {
                 <input 
                     type="text"
                     value={messageInput}
-                    onChange={(e) => setMessageInput(e.target.value)}
+                    onChange={handleTyping}
                     onKeyPress={(e) => e.key === 'Enter' && handleMessageSend()}
                     placeholder="Type a message..."
                     className="flex-1 mx-2 px-4 py-2 rounded-full bg-gray-100 focus:outline-none focus:ring-2 focus:ring-teal-300"

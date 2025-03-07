@@ -6,6 +6,7 @@ import path from "path"
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import cors from "cors"
+import { app,server } from './socket.js';
 env.config()
 
 // const __filename = fileURLToPath(import.meta.url);
@@ -13,7 +14,7 @@ env.config()
 // const __dirname = path.dirname(__filename);
 
 
-const app = express();
+
 app.use(cors())
 app.use(express.static(path.join('../clientside')))
 // app.get("*",(req,res)=>{
@@ -23,7 +24,7 @@ app.use(express.json({limit:"100mb"}))
 app.use("/api",router)
 
 connection().then(()=>{
-    app.listen(process.env.PORT,()=>{
+    server.listen(process.env.PORT,()=>{
         console.log(`server started on port http://localhost:${process.env.PORT}`)
     })
 })
