@@ -1,19 +1,70 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from "react-router-dom";
+import apiPath from "./apipath/apipath";
+import axios from "axios";
 
-function MessageScreen({ selectedFriend }) {
-    const [message, setMessage] = useState('');
-
-    const handleSendMessage = () => {
-        
-        if (message.trim()) {
-            console.log('Sending message:', message);
-            setMessage(''); 
+function MessageScreen({ selectedFriend, currentUserId }) {
+  
+    const [messageInput, setMessageInput] = useState("");
+   
+    const [receivedMessages, setReceivedMessages] = useState([]);
+    
+    console.log("Current User ID:", currentUserId);
+    
+    // Function to send a message
+    const handleMessageSend = async () => {
+        try {
+            if (!messageInput.trim()) return; // Don't send empty messages
+            
+            const messageData = {
+                userfrom: currentUserId,
+                userto: selectedFriend._id,
+                message: messageInput,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            
+            const res = await axios.post(`${apiPath()}/sendmessage`, messageData);
+            
+            if (res.status === 201) {
+                // Clear the input field after successful send
+                setMessageInput("");
+                // Refresh messages
+                getMessages();
+            }
+        } catch (error) {
+            console.log("Error sending message:", error);
         }
     };
+    
+    // Function to get messages
+    const getMessages = async () => {
+        try {
+            // Create proper request body object
+            const requestData = {
+                userfrom: currentUserId,
+                userto: selectedFriend._id
+            };
+            
+            const res = await axios.post(`${apiPath()}/getmessage`, requestData);
+            
+            if (res.status === 201) {
+                setReceivedMessages(res.data);
+            }
+        } catch (error) {
+            console.log("Error fetching messages:", error);
+        }
+    };
+    
+    // Fetch messages when component mounts or selectedFriend changes
+    useEffect(() => {
+        getMessages();
+        
+    }, [currentUserId, selectedFriend._id]);
+    
+    console.log("Received Messages:", receivedMessages);
 
     return (
         <div className="flex-1 flex flex-col bg-gray-50">
-          
             <div className="chat-header flex items-center p-4 border-b border-gray-200 bg-white">
                 <img 
                     src={selectedFriend.photo && selectedFriend.photo[0] ? selectedFriend.photo[0] : "/api/placeholder/50/50"}
@@ -26,24 +77,41 @@ function MessageScreen({ selectedFriend }) {
                 </div>
             </div>
 
-            
             <div className="chatbox flex-1 p-4 overflow-y-auto flex flex-col">
-                {/* Placeholder messages */}
-                <div className="message self-start flex max-w-[70%] mb-4">
-                    <div className="mr-2">
-                        <img 
-                            src={selectedFriend.photo && selectedFriend.photo[0] ? selectedFriend.photo[0] : "/api/placeholder/30/30"} 
-                            alt="Friend" 
-                            className="w-8 h-8 rounded-full border border-teal-200" 
-                        />
-                    </div>
-                    <div>
-                        <div className="message-bubble bg-white text-gray-800 px-4 py-2 rounded-2xl text-sm shadow-sm">
-                            Hey! How are you?
+              
+                   { receivedMessages.map((msg, index) => (
+                        <div 
+                            key={index}
+                            className={`message ${msg.userfrom === currentUserId ? 'self-end' : 'self-start'} flex max-w-[70%] mb-4`}
+                        >
+                            {msg.userfrom !== currentUserId && (
+                                <div className="mr-2">
+                                    <img 
+                                        src={selectedFriend.photo && selectedFriend.photo[0] ? selectedFriend.photo[0] : "/api/placeholder/30/30"} 
+                                        alt="Friend" 
+                                        className="w-8 h-8 rounded-full border border-teal-200" 
+                                    />
+                                </div>
+                            )}
+                            <div>
+                                <div 
+                                    className={`message-bubble px-4 py-2 rounded-2xl text-sm shadow-sm ${
+                                        msg.userfrom === currentUserId 
+                                            ? 'bg-teal-500 text-white' 
+                                            : 'bg-white text-gray-800'
+                                    }`}
+                                >
+                                    {msg.message}
+                                </div>
+                                <div className={`message-time text-xs text-gray-400 mt-1 ${
+                                    msg.userfrom === currentUserId ? 'text-right' : ''
+                                }`}>
+                                    {msg.time}
+                                </div>
+                            </div>
                         </div>
-                        <div className="message-time text-xs text-gray-400 mt-1">10:05 AM</div>
-                    </div>
-                </div>
+                    ))
+                }
             </div>
 
             {/* Message Input */}
@@ -65,16 +133,17 @@ function MessageScreen({ selectedFriend }) {
                         </svg>
                     </div>
                 </div>
+
                 <input 
                     type="text"
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                    value={messageInput}
+                    onChange={(e) => setMessageInput(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleMessageSend()}
                     placeholder="Type a message..."
                     className="flex-1 mx-2 px-4 py-2 rounded-full bg-gray-100 focus:outline-none focus:ring-2 focus:ring-teal-300"
                 />
                 <button 
-                    onClick={handleSendMessage}
+                    onClick={handleMessageSend}
                     className="bg-teal-500 hover:bg-teal-600 text-white rounded-full p-2 ml-2 transform transition-all duration-300 hover:scale-105"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">

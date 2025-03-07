@@ -30,6 +30,7 @@ function MessengerUi() {
 
       if (res.status === 200) {
         setUser(res.data);
+        
       }
     } catch (error) {
       if (error.response?.data?.msg === "Login time expired please login again") {
@@ -207,7 +208,7 @@ function MessengerUi() {
 
         {/* Session 2 - Chat Screen (Right Section) */}
         {selectedFriend ? (
-          <MessageScreen selectedFriend={selectedFriend} />
+          <MessageScreen selectedFriend={selectedFriend} currentUserId={user?._id} />
         ) : (
           <div className="flex-1 flex items-center justify-center bg-gray-50 text-gray-500">
             Select a friend to start chatting

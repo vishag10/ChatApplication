@@ -14,6 +14,8 @@ router.route("/adduser").post(bh.addUser);
 router.route("/loginuser").post(bh.loginUser);
 router.route("/getuser").get(Auth, bh.HomeUser);
 router.route("/getsidebar").post(mh.getUserSidebar);
+router.route("/sendmessage").post(mh.sendMessage);
+router.route("/getmessage").post(mh.getMessage);
 
 
 
