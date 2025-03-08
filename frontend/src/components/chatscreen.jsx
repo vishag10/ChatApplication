@@ -11,7 +11,7 @@ function MessengerUi() {
   const [user, setUser] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [sideuser, setSideuser] = useState([]);
-  const [selectedFriend, setSelectedFriend] = useState(null); // New state to track selected friend
+  const [selectedFriend, setSelectedFriend] = useState(null); 
   
   const getUser = async () => {
     const token = localStorage.getItem("token");
@@ -206,7 +206,7 @@ function MessengerUi() {
           </div>
         </div>
 
-        {/* Session 2 - Chat Screen (Right Section) */}
+       
         {selectedFriend ? (
           <MessageScreen selectedFriend={selectedFriend} currentUserId={user?._id} />
         ) : (
@@ -216,7 +216,7 @@ function MessengerUi() {
         )}
       </div>
       
-      {/* Click outside to close dropdown */}
+      
       {showDropdown && (
         <div 
           className="fixed inset-0 z-10" 

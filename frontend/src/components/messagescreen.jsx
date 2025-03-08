@@ -12,38 +12,38 @@ function MessageScreen({ selectedFriend, currentUserId }) {
     const [typingTimeout, setTypingTimeout] = useState(null);
     const chatBoxRef = useRef(null);
     
-    // Initialize socket connection
+   
     useEffect(() => {
         const newSocket = io(apiPath().replace('/api', ''));
         setSocket(newSocket);
         
-        // Let the server know this user is online
+       
         newSocket.emit('user_connected', currentUserId);
         
-        // Clean up on unmount
+       
         return () => {
             newSocket.disconnect();
         };
     }, [currentUserId]);
     
-    // Handle socket events for receiving messages and typing indicators
+    
     useEffect(() => {
         if (!socket) return;
         
-        // Listen for new messages
+        
         socket.on('new message', (data) => {
             const newMessage = data.message;
             
-            // Only add to chat if the message is relevant to this conversation
+           
             if ((newMessage.userfrom === currentUserId && newMessage.userto === selectedFriend._id) ||
                 (newMessage.userfrom === selectedFriend._id && newMessage.userto === currentUserId)) {
                 setReceivedMessages(prevMessages => [...prevMessages, newMessage]);
-                // If we receive a message, the other user is no longer typing
+               
                 setIsTyping(false);
             }
         });
         
-        // Listen for typing indicators
+        
         socket.on('typing', (data) => {
             if (data.userId === selectedFriend._id && data.receiverId === currentUserId) {
                 setIsTyping(data.isTyping);
@@ -56,18 +56,18 @@ function MessageScreen({ selectedFriend, currentUserId }) {
         };
     }, [socket, currentUserId, selectedFriend._id]);
     
-    // Scroll to bottom when messages change
+   
     useEffect(() => {
         if (chatBoxRef.current) {
             chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
         }
     }, [receivedMessages, isTyping]);
     
-    // Handle typing event
+    
     const handleTyping = (e) => {
         setMessageInput(e.target.value);
         
-        // Send typing indicator to server
+        
         if (socket) {
             socket.emit('typing', {
                 userId: currentUserId,
@@ -75,10 +75,10 @@ function MessageScreen({ selectedFriend, currentUserId }) {
                 isTyping: true
             });
             
-            // Clear previous timeout
+            
             if (typingTimeout) clearTimeout(typingTimeout);
             
-            // Set a new timeout to stop the typing indicator after 2 seconds of inactivity
+           
             const timeout = setTimeout(() => {
                 socket.emit('typing', {
                     userId: currentUserId,
@@ -91,12 +91,12 @@ function MessageScreen({ selectedFriend, currentUserId }) {
         }
     };
     
-    // Function to send a message
+   
     const handleMessageSend = async () => {
         try {
-            if (!messageInput.trim()) return; // Don't send empty messages
+            if (!messageInput.trim()) return; 
             
-            // Clear typing indicator when sending a message
+            
             if (socket && typingTimeout) {
                 clearTimeout(typingTimeout);
                 socket.emit('typing', {
@@ -116,7 +116,7 @@ function MessageScreen({ selectedFriend, currentUserId }) {
             const res = await axios.post(`${apiPath()}/sendmessage`, messageData);
             
             if (res.status === 201) {
-                // Clear the input field after successful send
+                
                 setMessageInput("");
             }
         } catch (error) {
@@ -124,10 +124,10 @@ function MessageScreen({ selectedFriend, currentUserId }) {
         }
     };
     
-    // Function to get messages
+    
     const getMessages = async () => {
         try {
-            // Create proper request body object
+           
             const requestData = {
                 userfrom: currentUserId,
                 userto: selectedFriend._id
@@ -143,7 +143,7 @@ function MessageScreen({ selectedFriend, currentUserId }) {
         }
     };
     
-    // Fetch messages when component mounts or selectedFriend changes
+   
     useEffect(() => {
         if (selectedFriend && selectedFriend._id) {
             getMessages();
@@ -204,7 +204,7 @@ function MessageScreen({ selectedFriend, currentUserId }) {
                     </div>
                 ))}
                 
-                {/* Typing indicator in the chat */}
+               
                 {isTyping && (
                     <div className="message self-start flex max-w-[70%] mb-4">
                         <div className="mr-2">
@@ -225,7 +225,7 @@ function MessageScreen({ selectedFriend, currentUserId }) {
                 )}
             </div>
 
-            {/* Message Input */}
+           
             <div className="message-input flex items-center p-3 bg-white border-t border-gray-200">
                 <div className="input-actions flex">
                     <div className="mx-2 cursor-pointer p-2 hover:bg-gray-100 rounded-full">
