@@ -11,7 +11,9 @@ function MessengerUi() {
   const [user, setUser] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [sideuser, setSideuser] = useState([]);
+  const [allUsers, setAllUsers] = useState([]);
   const [selectedFriend, setSelectedFriend] = useState(null); 
+  const [showAllUsers, setShowAllUsers] = useState(false);
   
   const getUser = async () => {
     const token = localStorage.getItem("token");
@@ -30,7 +32,6 @@ function MessengerUi() {
 
       if (res.status === 200) {
         setUser(res.data);
-        
       }
     } catch (error) {
       if (error.response?.data?.msg === "Login time expired please login again") {
@@ -43,15 +44,77 @@ function MessengerUi() {
   const getusersidebar = async () => {
     try {
       if (!user?._id) return;
+      
+      // This will be used to get only friends
       const res = await axios.post(`${apiPath()}/getsidebar`, { _id: user._id });
       if (res.status === 200) {
-        setSideuser(res.data || []);
+        // Filter only friends from the user object
+        const friendsList = user.friends ? res.data.filter(u => user.friends.includes(u._id)) : [];
+        setSideuser(friendsList || []);
       }
     } catch (error) {
       console.error("Error fetching sidebar users:", error);
       setSideuser([]);
     }
   };
+  
+  const getAllUsers = async () => {
+    try {
+      if (!user?._id) return;
+      
+      const res = await axios.post(`${apiPath()}/getsidebar`, { _id: user._id });
+      if (res.status === 200) {
+        // Filter out users who are already friends
+        const nonFriends = res.data.filter(u => !user.friends || !user.friends.includes(u._id));
+        setAllUsers(nonFriends || []);
+      }
+    } catch (error) {
+      console.error("Error fetching all users:", error);
+      setAllUsers([]);
+    }
+  };
+  
+  const addFriend = async (friendId) => {
+    try {
+        const res = await axios.put(`${apiPath()}/addfriend/${user._id}`, { friendId });
+
+        if (res.status === 200) {
+            setUser({
+                ...user,
+                friends: [...(user.friends || []), friendId]
+            });
+
+            // Move the user from allUsers to sideuser
+            const friendToAdd = allUsers.find(u => u._id === friendId);
+            if (friendToAdd) {
+                setSideuser([...sideuser, friendToAdd]);
+                setAllUsers(allUsers.filter(u => u._id !== friendId));
+            }
+
+            toast.success("Friend added successfully!", {
+                position: "top-right",
+                autoClose: 3000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                theme: "dark",
+            });
+        }
+    } catch (error) {
+        console.error("Error adding friend:", error);
+        toast.error("Failed to add friend. Please try again.", {
+            position: "top-right",
+            autoClose: 3000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            theme: "dark",
+        });
+    }
+};
+
   
   useEffect(() => {
     getUser();
@@ -60,6 +123,7 @@ function MessengerUi() {
   useEffect(() => {
     if (user) {
       getusersidebar();
+      getAllUsers();
     }
   }, [user]); 
 
@@ -82,9 +146,14 @@ function MessengerUi() {
     setShowDropdown(!showDropdown);
   };
 
- 
   const handleFriendSelect = (friend) => {
     setSelectedFriend(friend);
+    // Close all users panel when a friend is selected
+    setShowAllUsers(false);
+  };
+  
+  const toggleAllUsers = () => {
+    setShowAllUsers(!showAllUsers);
   };
   
   return (
@@ -92,7 +161,6 @@ function MessengerUi() {
       <ToastContainer />
       
       <div className="flex justify-between items-center px-4 py-3 bg-teal-500 text-white shadow-md">
-        
         <div className="flex items-center">
           <div className="w-8 h-8 bg-teal-50 rounded-full flex items-center justify-center">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-teal-600">
@@ -102,7 +170,6 @@ function MessengerUi() {
           </div>
           <div className="text-xl font-bold mr-3">LiveChat</div>
         </div>
-        
         
         <div className="relative">
           <div 
@@ -121,7 +188,6 @@ function MessengerUi() {
               </svg>
             )}
           </div>
-          
           
           {showDropdown && user && (
             <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20 border border-gray-200">
@@ -158,15 +224,12 @@ function MessengerUi() {
           )}
         </div>
         
-        
         <div className="md:hidden text-2xl cursor-pointer">≡</div>
       </div>
       
-      
       <div className="flex flex-1 overflow-hidden">
-       
         <div className="session1 w-80 bg-white shadow-md flex flex-col md:relative z-10">
-         
+          {/* Search Bar */}
           <div className="p-3 border-b border-gray-200">
             <div className="flex items-center bg-gray-100 rounded-full px-3 py-2">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 mr-2" viewBox="0 0 20 20" fill="currentColor">
@@ -180,33 +243,101 @@ function MessengerUi() {
             </div>
           </div>
           
-          {/* Friends List */}
+          {/* Friends Section Header */}
+          <div className="px-3 py-2 bg-gray-100 border-b border-gray-200 flex justify-between items-center">
+            <h3 className="font-semibold text-gray-700">Friends</h3>
+            <button 
+              onClick={toggleAllUsers}
+              className="bg-teal-500 hover:bg-teal-600 text-white rounded-full p-1"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+          
+          {/* Friends List or All Users List based on state */}
           <div className="friends-list flex-1 overflow-y-auto">
-            {sideuser && sideuser.map((friend) => (
-              <div 
-                key={friend._id} 
-                className="friend flex items-center p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100"
-                onClick={() => handleFriendSelect(friend)} 
-              >
-                <div className="relative mr-3">
-                  <img 
-                    src={friend.photo && friend.photo[0] ? friend.photo[0] : "/api/placeholder/50/50"} 
-                    alt={friend.username} 
-                    className="w-12 h-12 rounded-full object-cover" 
-                  />
-                  <span className="absolute bottom-0 right-0 w-3 h-3 bg-teal-500 rounded-full border-2 border-white"></span>
+            {!showAllUsers ? (
+              // Show Friends List
+              sideuser.length > 0 ? (
+                sideuser.map((friend) => (
+                  <div 
+                    key={friend._id} 
+                    className="friend flex items-center p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100"
+                    onClick={() => handleFriendSelect(friend)} 
+                  >
+                    <div className="relative mr-3">
+                      <img 
+                        src={friend.photo && friend.photo[0] ? friend.photo[0] : "/api/placeholder/50/50"} 
+                        alt={friend.username} 
+                        className="w-12 h-12 rounded-full object-cover" 
+                      />
+                      <span className="absolute bottom-0 right-0 w-3 h-3 bg-teal-500 rounded-full border-2 border-white"></span>
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                      <div className="font-medium text-gray-800">{friend.username}</div>
+                      <div className="text-sm text-gray-500 truncate">{friend.email}</div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="p-4 text-center text-gray-500">
+                  No friends yet. Click the + button to add friends.
                 </div>
-                <div className="flex-1 overflow-hidden">
-                  <div className="font-medium text-gray-800">{friend.username}</div>
-                  <div className="text-sm text-gray-500 truncate">{friend.email}</div>
+              )
+            ) : (
+              // Show All Users List for adding friends
+              <>
+                <div className="bg-teal-50 p-2 border-b border-teal-100">
+                  <h4 className="text-teal-700 font-medium text-center">Add New Friends</h4>
                 </div>
-                
-              </div>
-            ))}
+                {allUsers.length > 0 ? (
+                  allUsers.map((user) => (
+                    <div 
+                      key={user._id} 
+                      className="friend flex items-center p-3 hover:bg-gray-50 border-b border-gray-100"
+                    >
+                      <div className="relative mr-3">
+                        <img 
+                          src={user.photo && user.photo[0] ? user.photo[0] : "/api/placeholder/50/50"} 
+                          alt={user.username} 
+                          className="w-12 h-12 rounded-full object-cover" 
+                        />
+                      </div>
+                      <div className="flex-1 overflow-hidden">
+                        <div className="font-medium text-gray-800">{user.username}</div>
+                        <div className="text-sm text-gray-500 truncate">{user.email}</div>
+                      </div>
+                      <button 
+                        onClick={() => addFriend(user._id)}
+                        className="ml-2 bg-teal-500 hover:bg-teal-600 text-white rounded-full p-1"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-4 text-center text-gray-500">
+                    No users available to add.
+                  </div>
+                )}
+                <div className="p-3 flex justify-center">
+                  <button 
+                    onClick={toggleAllUsers}
+                    className="bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md px-4 py-2 text-sm"
+                  >
+                    Back to Friends
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
-       
+        {/* Message screen section */}
         {selectedFriend ? (
           <MessageScreen selectedFriend={selectedFriend} currentUserId={user?._id} />
         ) : (
@@ -216,7 +347,7 @@ function MessengerUi() {
         )}
       </div>
       
-      
+      {/* Overlay to close dropdown when clicking outside */}
       {showDropdown && (
         <div 
           className="fixed inset-0 z-10" 

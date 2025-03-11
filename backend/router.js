@@ -20,6 +20,8 @@ router.route("/getsidebar").post(mh.getUserSidebar);
 router.route("/sendmessage").post(mh.sendMessage);
 router.route("/getmessage").post(mh.getMessage);
 
+router.route("/addfriend/:id").put(mh.addFriend);
+
 
 
 
